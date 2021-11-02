@@ -19,72 +19,228 @@ tidy=TRUE, tidy.opts=list(width.cutoff=60), R.options=list(max.print=100))
 
 ## Data Wrangling, Exploration, Visualization
 
-### Name and EID here
+### Nelly Akhmadikina na24752
 
 #### Introduction 
 
-Paragraph or two introducing your datasets and variables, why they are interesting to you, etc.
+I chose 3 data sets for my project. "pop1" is statistics on population of LGBT individuals in each US state including some territories. This dataset was take from the Movement Advancement Project (MAP) at https://www.lgbtmap.org/equality-maps/lgbt_populations. The variables I am using from this dataset are Total adult population (totaladpop), the LGBT Adult population(lgbtadpop), the LGBT population density(lgbtpopdensity), the Percent of Same-Sex individuals raising kids(percentindivkids), and the Percent of Same-Sex couples raising kids (percentcoupleskids). "policy1" is data on policies regarding the LGBT community. This data set includes the Sexual Orientation Policy tallies (SOpolicy) and Gender Identity Policy tallies (GIpolicy) that the Movement Advancement Project assigns to each states based on it helpful or harmful policies that are in place. The total of those two tallies is shown as Overall Tally (overallpolicy) . I will not be using any other variables from this dataset. This data is found on https://www.lgbtmap.org/equality-maps/.  My third dataset "marriage1" is found on https://www.pewforum.org/religious-landscape-study/compare/views-about-same-sex-marriage/by/state/. It is from the Pew Research Center. This was a 2014 survey on Views about same-sex marriage by state. This dataset includes the percent who Favor(favormarriage), Oppose (opposemarriage), and Don't Know (dkmarriage), as well as the sample size of the survey (marriagesample). I will not be using the sample size. I am interested in this data because I like studying statistics on the LGBT community. I wish to go into the public health sector to health the LGBT community. The datset includes District of Columbia. I keep it in during most calculations, but I remove it when grouping by region. 
 
 ```{R}
-# read your datasets in here, e.g., with read_csv()
+
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(gt)
+pop1 <-read_csv("LMS1.csv")
+marriage1 <-read_csv("LGBT MAP - Sheet3.csv")
+policy1 <-read_csv("LGBT MAP - Sheet2.csv")
 
 ```
+```{R}
+glimpse(policy1)
+glimpse(marriage1)
+glimpse(pop1)
+
+
+```
+
 
 #### Tidying: Reshaping
 
 If your datasets are tidy already, demonstrate that you can reshape data with pivot wider/longer here (e.g., untidy and then retidy). Alternatively, it may be easier to wait until the wrangling section so you can reshape your summary statistics. Note here if you are going to do this.
 
 ```{R}
-# your tidying code (if applicable; can also wait until wrangling section)
+#more tidying is done with summary statistics as well
+policy1 %>% na.omit -> policy
+marriage1 %>% pivot_longer(2:4) -> marrmess
+head(marrmess)
+marrmess %>% pivot_wider(names_from = name, values_from = value) -> marriage
+marriage %>% mutate(State = tolower(State)) -> marriage
+head(marriage)
+pop1 %>% rename("State"="STATE") %>% mutate(State = tolower(State)) -> pop
+head(pop)
+policy %>% mutate(State = tolower(State)) -> policy 
+head(policy)
 ```
 
     
 #### Joining/Merging
-
 ```{R}
-# your joining code
+policy %>% count 
+policy %>% n_distinct()
+marriage%>% count
+marriage%>% n_distinct()
+pop%>% count
+pop%>% n_distinct()
 
-# your joining code
+anti_join(policy, pop)
+anti_join(policy, marriage)
+anti_join(pop, marriage)
+```
+The policy dataset has 56 rows, and 56 distinct rows. The pop dataset has 56 rows, and 56 distinct rows. The marriage dataset has 51 rows, and 51 distinct rows. I used anti_join to loook at which rows in one dataset are not in the other datasets. Policy and pop have all the same "States." Policy and pop have 5 more "States" than Marriage. These are all territories and will be removed when joining. 
+```{R}
+#joining
+full_join(pop, policy) -> poppolicy
+head(poppolicy)
+right_join(poppolicy, marriage) -> lgbt1
+head(lgbt1)
+data.frame(state.name, state.region)  ->stateregion
+stateregion<- stateregion %>% mutate(state.name = tolower(state.name)) %>% rename("State"="state.name")
+full_join(lgbt1, stateregion) -> lgbt2
+head(lgbt2)
 ```
 
-Discussions of joining here. Feel encouraged to break up into more than once code chunk and discuss each in turn.
+I first joined pop and policy together, and as they have the same "States" I used full_join. Because I wanted to remove the territories, I used right_join, to only match the "states" in Marriage, which did not include the territories. I also added State region into my final big dataset. 
 
 ####  Wrangling
 
 ```{R}
-# your wrangling code
-
-# your wrangling code
-
-# your wrangling code
+#renaming columns to easier and shorter names to type, removing unwanted columns
+lgbt3 <- lgbt2 %>% rename("marriagesample"="Sample Size, same-sex marriage", "favormarriage"="Strongly favor/favor same-sex marriage", "opposemarriage" = "Oppose/strongly oppose same-sex marriage", "dkmarriage" = "Don't know, same-sex marriage", "totaladpop" = "TOTAL ADULT POPULATION", "lgbtadpop" = "LGBT ADULT POPULATION", "lgbtpopdensity"="LGBT POPULATION DENSITY", "percentindivkids"= "% OF LGBTQ INDIVIDUALS RAISING CHILDREN", "percentcoupleskids"= "% OF SAME-SEX COUPLES RAISING CHILDREN", "SOpolicy" = "SEXUAL ORIENTATION POLICY TALLY", "GIpolicy"= "GENDER IDENTITY POLICY TALLY", "overallpolicy"= "OVERALL TALLY")
+lgbt3 %>% select(1:6, 16:18, 20:21, 23) -> lgbt
+head(lgbt) 
 ```
 
+Here I have renamed the long and difficult column titles to ones that are easier to type when coding. I also have removed the columns that I don't want to use. 
+
+```{R}
+#removing commas and percent signs in data
+lgbt$lgbtadpop <- as.numeric(gsub(",","",lgbt$lgbtadpop))
+lgbt$lgbtpopdensity <- as.numeric(gsub("%","",lgbt$lgbtpopdensity))
+lgbt$percentindivkids <- as.numeric(gsub("%","",lgbt$percentindivkids))
+lgbt$percentcoupleskids <- as.numeric(gsub("%","",lgbt$percentcoupleskids))
+lgbt$favormarriage <- as.numeric(gsub("%","",lgbt$favormarriage))
+lgbt$opposemarriage <- as.numeric(gsub("%","",lgbt$opposemarriage))
+head(lgbt)
+```
+Here I have removed the comma in lgbtadpop variable, and the percent sign in 5 of the variables and converted them into numeric variables making it possible to do numeric statistics. 
 Your discussion of wrangling section here. Feel encouraged to break up into more than once code chunk and discuss each in turn.
+```{R}
+
+lgbt %>% mutate(marriageratio=favormarriage/opposemarriage) -> lgbt
+lgbt %>% arrange(-favormarriage)%>% gt -> lgbtarranged1
+head(lgbtarranged1)
+lgbt %>% arrange(-marriageratio)%>% gt-> lgbtarranged2
+head(lgbtarranged2)
+lgbt %>% na.omit %>% group_by(state.region) %>% summarize(meanfavor=mean(favormarriage)) %>% arrange(-meanfavor) %>%gt
+lgbt %>% mutate(SOcategory= ifelse(SOpolicy>=14, "high", 
+                        ifelse(SOpolicy<=13.75 & 9.25<=SOpolicy, "medium",
+                        ifelse(SOpolicy<=9 & 4.75<=SOpolicy, "fair",
+                        ifelse(SOpolicy<=4.5 & 0<=SOpolicy, "low",
+                        "negative"))))) ->lgbt
+lgbt %>% mutate(GIcategory= ifelse(GIpolicy>=15, "high", 
+                        ifelse(GIpolicy<=14.75 & 10<=GIpolicy, "medium",
+                        ifelse(GIpolicy<=9.75 & 5<=GIpolicy, "fair",
+                        ifelse(GIpolicy<=4.75 & 0<=GIpolicy, "low",
+                        "negative"))))) ->lgbt
+lgbt %>% mutate(totalcategory= ifelse(overallpolicy>=29, "high", 
+                        ifelse(overallpolicy<=28.75 & 19.25<=overallpolicy, "medium",
+                        ifelse(overallpolicy<=19 & 9.75<=overallpolicy, "fair",
+                        ifelse(overallpolicy<=9.5 & 0<=overallpolicy, "low",
+                        "negative"))))) ->lgbt
+lgbt %>% count(SOcategory) 
+lgbt %>% filter(state.region=="South") %>% arrange(-lgbtpopdensity)%>% gt
+```
+I have created a new variable, "marriageratio", using mutate. I have used arranged to look at which states have the highest percent of polled persons who favor same-sex marriage, as well as who has the highest marriage ratio. I also arranged the mean Favor percentage by region that the states are categorized in. I also created 3 new variables that give a categorical description of the tallies from tthe policy dataset. These separations are the ones MAP uses as well. I used count tto see how many states fit into each category for the Sexual orientation tally. I used filter to arrange only the southern states by LGBT population density. 
+
+```{R}
+lgbt%>% group_by(SOcategory) %>% summarize(meanfavor=mean(favormarriage)) %>% arrange(-meanfavor)
+lgbt%>% group_by(SOcategory) %>% summarize(meancouplekids=mean(percentcoupleskids)) %>% arrange(-meancouplekids)
+lgbt%>% group_by(SOcategory) %>% summarize(meanindivkids=mean(percentindivkids)) %>% arrange(-meanindivkids)
+lgbt%>% group_by(SOcategory) %>% summarize(mean=mean(lgbtpopdensity)) %>% arrange(-mean)
+```
+I have calculated the means of varius variables after grouping by SO category. This was the mst interesting statistic tto me as there is a higher percentage oof LGBT having kids in states that have worse LGBT policies. 
+```{R}
+#categorical variables
+lgbt %>% count(SOcategory)
+lgbt %>% count(totalcategory)
+lgbt %>% count(GIcategory)
+lgbt %>% count(state.region)
+```
+I used count to see how many states fit into each of the variable: SOcategry, total category, GI category, and state.region. 
+```{R}
+
+#numeric variable
+lgbt %>% summarize_if(is.numeric, list(mean=mean,min=min,max=max, sd=sd, var=var,distinct=n_distinct), na.rm=T) ->lgbtstat1
+head(lgbtstat1)
+lgbt %>% summarize_if(is.numeric, list(Q1=quantile), probs=.25, na.rm=T)-> lgbtstat2
+head(lgbtstat2)
+lgbt %>% summarize_if(is.numeric, list(Q3=quantile), probs=.75, na.rm=T) -> lgbtstat3
+head(lgbtstat3)
+lgbtstat1 %>% pivot_longer(1:66) %>% separate(name, into=c("name", "stat")) %>% pivot_wider(names_from = "name", values_from = "value") ->lgbtstat11
+lgbtstat2 %>% pivot_longer(1:11) %>% separate(name, into=c("name", "stat")) %>% pivot_wider(names_from = "name", values_from = "value") ->lgbtstat22
+lgbtstat3 %>% pivot_longer(1:11) %>% separate(name, into=c("name", "stat")) %>% pivot_wider(names_from = "name", values_from = "value") ->lgbtstat33
+full_join(lgbtstat11, lgbtstat22) -> lgbtstat222
+full_join(lgbtstat222, lgbtstat33) -> lgbtstatfull
+lgbtstatfull %>% select(-2) ->lgbtstatfull
+head(lgbtstatfull)
+```
+I used summarize_if because that helped too only take the numeric variables. I calculated the mean, min, max, sd, var, n_distinct, and 2 quantile statistic of each of the numeric variables. I then tidied the data using pivot_loinger and pivot_wider to be able to join all the statisttic into on table
+```{R}
+
+lgbt %>% summarize_if(is.character, n_distinct) %>% gt %>% tab_header(title=md("**Distinct characters**"))
+lgbt %>%summarize_all(function(x)sum(is.na(x))) %>% gt %>% tab_header(title=md("**NAs**"))
+```
+
+There is only one NA in the dataset and that is because District of Columbia does not have a match in the state.region dataset. I also calculated the distinct characters in each of the character variables. 
+```{R}
+#tables
+ 
+lgbtstatfull %>% gt %>%
+  tab_header(title=md("**Summary Statistics**"),
+             subtitle=md("A table of my `lgbt` summary statistics"))
+lgbt %>% group_by(state.region) %>% na.omit%>% summarize_if(is.numeric, list(mean=mean,min=min,max=max, sd=sd, var=var,distinct=n_distinct), na.rm=T) %>% pivot_longer(2:67) %>% separate(name, into=c("name", "stat")) %>% pivot_wider(names_from = "name", values_from = "value") -> lgbttable
+lgbttable%>% gt %>% tab_header(title=md("**Stats grouped by Region**"))
+lgbt %>% group_by(state.region, SOcategory) %>% na.omit%>% summarize_if(is.numeric, mean, na.rm=T) %>% gt %>% tab_header(title=md("**Mean Grouped by Region and SO category**"))
+lgbt %>% group_by(state.region) %>% na.omit%>%summarize_if(is.character, n_distinct) 
+
+lgbt %>% select(2:11) %>%cor()
+
+```
+I have created multiple tables to show case some of the interesting data trends. The first is the summary statistics that were calculated earlier. This included all the numeric variables. I then grouped them by region to look at the trends. I also grouped them by region and SO category to look at which regions have which SOcategories and how the stats differ within the regions not just among the regions.
+
+```{R}
+lgbtstatfull %>% select_if(is.numeric) %>% cor %>% as.data.frame %>%
+  rownames_to_column %>% pivot_longer(-1) %>%
+  ggplot(aes(rowname,name,fill=value)) + geom_tile() +
+  geom_text(aes(label=round(value,.5))) +
+  xlab("") + ylab("") + coord_fixed() +theme(axis.text.x = element_text(angle=45, hjust=1))
+                                             
+  
+```
+
+
 
 
 #### Visualizing
 
 ```{R}
-# your plot 1
+
+lgbt %>% ggplot(aes(x=reorder(SOcategory,-percentcoupleskids), y=percentcoupleskids, fill=SOcategory, alpha=0.2)) +geom_jitter(alpha=.5, aes(color=SOcategory))+ theme(legend.position="none")+ geom_point(stat="summary", shape=8, alpha=5)+xlab("Sexual Orientation Policy Tally Category") +ylab("Percent of Same-Sex Couples with Kids") + scale_y_continuous(breaks=seq(0, 30, 5), labels=c("0%","5%", "10%","15%", "20%","25%", "30%")) +ggtitle("Percent of Same-sex couples with Kids in US States")
+lgbt %>% ggplot(aes(x=SOpolicy, y=percentcoupleskids, fill=SOcategory, alpha=0.2)) +geom_jitter(alpha=.5, aes(color=SOcategory))+ theme(legend.position="none")+xlab("Sexual Orientation Policy Tally") +ylab("Percent of Same-Sex Couples with Kids") + scale_y_continuous(breaks=seq(0, 30, 5), labels=c("0%","5%", "10%","15%", "20%","25%", "30%")) +ggtitle("Percent of Same-sex couples with Kids in US States")
 ```
 
-Your discussion of plot 1
+The Sexual Orientation Policy Tally was grouped into 5 categories: High, Medium, Fair, Low, and Negative. The Percent of Same-Sex couples who have kids per state is plotted within the categories. The plot shows a trend of the lower your Policy tally category the higher the pertange of couples with kids. It is surprising to me to see more same-sex couples having kids in states with worse Sexual Orientation policies. I would expect states with worse SO policies to make it more difficult to adopt orr parent a child as an LGBT person. However, I think it might be because states that are more likely to be more rural or have a value of having more kids, arer the states that have worse laws. Would be interesting to look at statistics for straight couples and see how it compares to the SO categories. 
 
 ```{R}
-# your plot 2
+lgbt %>% na.omit %>% group_by(state.region) %>% summarize(Favor = mean(favormarriage), Opposition=mean(opposemarriage)) %>% arrange(-Favor) ->plot2data
+
+plot2data%>% pivot_longer(2:3)%>% ggplot(aes(x=state.region, y=value, fill=name))+ geom_col() +coord_flip() + xlab("Region") + ylab("Mean Percent")+theme(plot.title = element_text(colour = "Blue"), legend.title = element_text(colour="white"))+ggtitle("Favor and Opposition of Same-sex Marriage")+scale_y_continuous(breaks=seq(0, 100, 10), labels=c("0%","10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"))+
+  scale_fill_brewer(palette="Accent") 
 ```
 
-Your discussion of plot 2
-
+This plot looks at the mean percentage of people who favor same-sex marriage per region of the US in the green color, and the mean percentage of people who oppoose same-sex Marriage per region in Purple. The plot shows that the North East has the least opposition and the South has the most opposition. This is not surprising as the South is much more conservative than thee NorthEast and West regions. 
 ```{R}
-# your plot 3
+
+lgbt %>% ggplot(aes(x=SOpolicy, y=favormarriage, col=state.region)) +geom_point() +ylab("Percent Favor Marriage")  + geom_smooth(method="lm")
+lgbt %>% na.omit %>% ggplot(aes(x=lgbtpopdensity, y=SOpolicy, col=state.region)) +geom_point() +ylab("Sexual Orientation Policy Tally") +xlab("LGBT population Density")  + geom_smooth(method="lm", se=F)+scale_color_brewer(palette="Set1") +ggtitle("Sexual Orientation Policy Tally vs LGBT population Density") +theme(plot.title = element_text(colour = "violet"), legend.title = element_text(colour="violet"))
 ```
 
-Your discussion of plot 3
+Plot 3 demonstrate the Sexual Orientation Policy Tally versus the LGBT population density. This plot shows that the policy tally increases as population density increases. This trend is also seen when grouped by regions. 
 
 #### Concluding Remarks
 
-If any!
+This was really fun and loved playing around with combining different variable to create different plots, and tables. 
 
 
 
